@@ -19,6 +19,8 @@ export default function ThreadForm() {
       // TODO 3: close the loop after a successful create.
       // - invalidate the ["threads"] query so the list refetches
       // - reset() the form so the fields clear for the next entry
+      queryClient.invalidateQueries({ queryKey: ["threads"] });
+      reset();
     },
     onError: (error) => {
       // TODO 4: route server errors back into the form.
@@ -27,13 +29,23 @@ export default function ThreadForm() {
       // - for each [field, message], call setError(field, { type: "server", message })
       // - if there is no field detail, call
       //   setError("root.server", { message: "Could not save. Please try again." })
+      const serverErrors = error.response?.data?.errors;
+      if (serverErrors) {
+        Object.entries(serverErrors).forEach(([field, message]) => {
+          setError(field, { type: "server", message });
+        });
+      } else {
+        setError("root.server", {
+          message: "Could not save. Please try again.",
+        });
+      }
     },
   });
 
   // TODO 1: handleSubmit runs client validation first, then calls this with valid data.
   // Fire the mutation here.
   const onSubmit = (data) => {
-    // call mutation.mutate(data)
+    mutation.mutate(data);
   };
 
   return (
@@ -61,7 +73,9 @@ export default function ThreadForm() {
 
       {/* TODO 2: disable this button while the mutation is pending, and show
           "Creating…" instead of "Create thread". Read mutation.isPending. */}
-      <button type="submit">Create thread</button>
+      <button type="submit" disabled={mutation.isPending}>
+        {mutation.isPending ? "Creating…" : "Create thread"}
+      </button>
     </form>
   );
 }
