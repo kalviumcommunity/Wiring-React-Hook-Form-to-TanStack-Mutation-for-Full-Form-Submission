@@ -1,4 +1,4 @@
-import { useForm } from "react-hook-form";
+/*import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createThread } from "../services/threadApi";
 
@@ -56,12 +56,116 @@ export default function ThreadForm() {
         {errors.body && <p role="alert">{errors.body.message}</p>}
       </div>
 
-      {/* Form-wide server error (not tied to a single field) */}
+      {/* Form-wide server error (not tied to a single field) *//*}
       {errors.root?.server && <p role="alert">{errors.root.server.message}</p>}
 
       {/* TODO 2: disable this button while the mutation is pending, and show
-          "Creating…" instead of "Create thread". Read mutation.isPending. */}
+          "Creating…" instead of "Create thread". Read mutation.isPending. *//*}
       <button type="submit">Create thread</button>
+    </form>
+  );
+}
+*/
+import { useForm } from "react-hook-form";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { createThread } from "../services/threadApi";
+
+export default function ThreadForm() {
+  const queryClient = useQueryClient();
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setError,
+    formState: { errors },
+  } = useForm({
+    defaultValues: {
+      title: "",
+      body: "",
+    },
+  });
+
+  const mutation = useMutation({
+    mutationFn: (data) => createThread(data),
+
+    onSuccess: () => {
+      // Invalidate the threads query so the list refetches
+      queryClient.invalidateQueries({
+        queryKey: ["threads"],
+      });
+
+      // Clear the form
+      reset();
+    },
+
+    onError: (error) => {
+      const fieldErrors = error?.response?.data?.errors;
+
+      if (fieldErrors && typeof fieldErrors === "object") {
+        Object.entries(fieldErrors).forEach(([field, message]) => {
+          setError(field, {
+            type: "server",
+            message,
+          });
+        });
+      } else {
+        setError("root.server", {
+          message: "Could not save. Please try again.",
+        });
+      }
+    },
+  });
+
+  const onSubmit = (data) => {
+    mutation.mutate(data);
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <div className="field">
+        <label htmlFor="title">Title</label>
+
+        <input
+          id="title"
+          {...register("title", {
+            required: "Title is required",
+          })}
+        />
+
+        {errors.title && (
+          <p role="alert">{errors.title.message}</p>
+        )}
+      </div>
+
+      <div className="field">
+        <label htmlFor="body">Body</label>
+
+        <textarea
+          id="body"
+          {...register("body", {
+            required: "Body is required",
+          })}
+        />
+
+        {errors.body && (
+          <p role="alert">{errors.body.message}</p>
+        )}
+      </div>
+
+      {/* Form-wide server error */}
+      {errors.root?.server && (
+        <p role="alert">
+          {errors.root.server.message}
+        </p>
+      )}
+
+      <button
+        type="submit"
+        disabled={mutation.isPending}
+      >
+        {mutation.isPending ? "Creating…" : "Create thread"}
+      </button>
     </form>
   );
 }
